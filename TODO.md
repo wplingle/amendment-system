@@ -67,7 +67,7 @@ Based on existing fis-amendments .NET application structure.
   - AmendmentProgressCreate/Response schemas
   - AmendmentFilter schema (for search criteria)
 
-- [ ] Implement CRUD operations in crud.py
+- [x] Implement CRUD operations in crud.py (IN PROGRESS)
   - Create amendment with auto-generated reference number
   - Read amendment by ID or reference
   - List all amendments with filtering:
@@ -498,6 +498,245 @@ Based on existing fis-amendments .NET application structure.
   - How to deploy to production
   - Environment setup instructions
   - Security hardening checklist
+
+## High Priority - New Strategic Improvements (Added by PLANNER)
+
+- [x] **CRITICAL: Implement CRUD operations module (backend/app/crud.py)** (IN PROGRESS)
+  - Impact: CRITICAL | Effort: HIGH | Priority: CRITICAL
+  - **BLOCKER**: No CRUD module exists - API endpoints cannot function without it
+  - The backend currently has models, schemas, and main.py but NO crud.py
+  - API endpoints in TODO depend on CRUD functions that don't exist yet
+  - Create comprehensive CRUD operations:
+    - `create_amendment()` - with auto-generated reference number
+    - `get_amendment()`, `get_amendment_by_reference()`
+    - `get_amendments()` - with advanced filtering (status, priority, dates, text search)
+    - `update_amendment()` - with audit field tracking
+    - `delete_amendment()`
+    - `add_amendment_progress()`, `get_amendment_progress()`
+    - `link_amendments()`, `get_linked_amendments()`
+    - `get_amendment_stats()` - for dashboard statistics
+  - Add proper error handling for not found, duplicate references
+  - Add transaction management and rollback on errors
+  - **BLOCKS**: All API endpoint implementation work
+  - **ESTIMATED EFFORT**: 4-6 hours of focused development
+  - File: `backend/app/crud.py` (to be created)
+
+- [ ] **HIGH: Implement core API endpoints (backend/app/main.py)**
+  - Impact: CRITICAL | Effort: HIGH | Priority: HIGH
+  - **DEPENDS ON**: CRUD operations module must be completed first
+  - Currently main.py only has root and health check endpoints
+  - Implement 15+ essential API endpoints for amendments:
+    - POST /api/amendments - Create amendment
+    - GET /api/amendments - List with filtering/pagination
+    - GET /api/amendments/{id} - Get by ID
+    - GET /api/amendments/reference/{ref} - Get by reference
+    - PUT /api/amendments/{id} - Update amendment
+    - DELETE /api/amendments/{id} - Delete amendment
+    - PATCH /api/amendments/{id}/qa - Update QA fields
+    - POST /api/amendments/{id}/progress - Add progress
+    - GET /api/amendments/{id}/progress - Get progress history
+    - POST /api/amendments/{id}/links - Link amendments
+    - GET /api/amendments/stats - Dashboard statistics
+    - GET /api/reference/* - Reference data endpoints
+  - Add proper request validation, error handling, status codes
+  - Add comprehensive API documentation strings
+  - Add request/response examples in docstrings
+  - **ESTIMATED EFFORT**: 6-8 hours
+  - File: `backend/app/main.py:80+` (after existing code)
+
+- [ ] **HIGH: Create comprehensive API integration tests**
+  - Impact: HIGH | Effort: MEDIUM | Priority: HIGH
+  - Currently only have basic model and schema tests
+  - NO API endpoint tests exist yet
+  - Create `tests/test_api.py` with comprehensive endpoint testing:
+    - Test all CRUD operations via API
+    - Test filtering, pagination, sorting
+    - Test validation and error responses (400, 404, 422)
+    - Test progress tracking workflow
+    - Test amendment linking
+    - Test statistics endpoint
+    - Test reference data endpoints
+  - Add test fixtures for sample data
+  - Test concurrent access scenarios
+  - Aim for 80%+ API coverage
+  - **ESTIMATED EFFORT**: 4-5 hours
+  - File: `tests/test_api.py` (to be created)
+
+- [ ] **HIGH: Implement frontend React application**
+  - Impact: CRITICAL | Effort: VERY HIGH | Priority: HIGH
+  - **CRITICAL GAP**: Frontend directory exists but is completely empty (only .gitkeep files)
+  - No React components, no pages, no API client, no routing - nothing implemented
+  - This is the largest remaining work item for MVP
+  - Required components (from TODO but not started):
+    - Amendment List/Enquiry page with advanced filtering
+    - Amendment Detail/Update page with tabbed layout
+    - Amendment Create form
+    - Progress update modal
+    - Reusable UI components (DataGrid, FormFields, StatusBadge)
+    - API service layer (src/services/api.js)
+    - Routing (React Router)
+  - Setup required:
+    - Initialize React app structure (if not done)
+    - Install dependencies (axios, react-router-dom, UI library)
+    - Create directory structure (components, pages, services, utils)
+  - **ESTIMATED EFFORT**: 20-30 hours (this is a major undertaking)
+  - **RECOMMENDATION**: Break this into smaller sub-tasks
+  - Directory: `frontend/src/` (currently empty)
+
+- [ ] **MEDIUM: Add authentication and authorization system**
+  - Impact: HIGH | Effort: HIGH | Priority: MEDIUM
+  - **SECURITY GAP**: No authentication exists - API is completely open
+  - Current state: No auth, anyone can access/modify all data
+  - Implement JWT-based authentication:
+    - User login/logout endpoints
+    - JWT token generation and validation
+    - Password hashing (bcrypt)
+    - User model with roles (Developer, QA, Manager, Admin)
+    - Protect endpoints with auth middleware
+    - Role-based permissions (e.g., only QA can mark QA complete)
+  - Add OAuth2 support for enterprise SSO
+  - Update frontend to handle auth tokens
+  - Add login page and protected routes
+  - **SECURITY IMPACT**: Currently a critical vulnerability
+  - **ESTIMATED EFFORT**: 8-10 hours
+  - Files: `backend/app/auth.py`, `backend/app/users.py` (to be created)
+
+- [ ] **MEDIUM: Add request rate limiting and API security**
+  - Impact: MEDIUM | Effort: LOW | Priority: MEDIUM
+  - **SECURITY GAP**: No rate limiting, vulnerable to abuse
+  - Add SlowAPI or similar for rate limiting:
+    - Limit requests per IP/user (e.g., 100 req/min)
+    - Different limits for read vs write operations
+    - 429 Too Many Requests responses
+  - Add security headers middleware:
+    - X-Content-Type-Options: nosniff
+    - X-Frame-Options: DENY
+    - X-XSS-Protection: 1; mode=block
+    - Strict-Transport-Security (HTTPS only)
+  - Add request/response size limits
+  - Add TrustedHostMiddleware
+  - Add request ID tracking for debugging
+  - **ESTIMATED EFFORT**: 2-3 hours
+  - File: `backend/app/main.py` (middleware section)
+
+- [ ] **MEDIUM: Create database seeding and sample data script**
+  - Impact: MEDIUM | Effort: LOW | Priority: MEDIUM
+  - **DX GAP**: No way to populate database with test data
+  - Makes local development and demos difficult
+  - Create `scripts/seed_db.py`:
+    - CLI arguments for number of records
+    - Generate realistic sample amendments (20-50)
+    - Various statuses, priorities, types
+    - Sample progress updates
+    - Sample linked amendments
+    - Sample QA data
+  - Add `--reset` flag to clear and reseed
+  - Document usage in README
+  - **DEVELOPER EXPERIENCE IMPACT**: Saves hours of manual data entry
+  - **ESTIMATED EFFORT**: 2-3 hours
+  - File: `scripts/seed_db.py` (to be created)
+
+- [ ] **MEDIUM: Add comprehensive error handling and logging**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: MEDIUM
+  - **OPERATIONAL GAP**: Limited error handling and logging
+  - Add structured logging:
+    - Use structlog or python-json-logger
+    - Log all API requests (endpoint, method, status, duration)
+    - Log all database operations
+    - Log authentication attempts
+    - Different log levels (DEBUG, INFO, WARNING, ERROR)
+  - Add custom exception handlers:
+    - DatabaseError -> 500 Internal Server Error
+    - ValidationError -> 422 Unprocessable Entity
+    - NotFoundError -> 404 Not Found
+    - AuthenticationError -> 401 Unauthorized
+  - Return consistent error response format
+  - Add correlation IDs for request tracking
+  - **ESTIMATED EFFORT**: 3-4 hours
+  - Files: `backend/app/logging.py`, `backend/app/exceptions.py` (to be created)
+
+## Medium Priority - Testing & Quality Enhancements (Added by PLANNER)
+
+- [ ] **MEDIUM: Implement integration tests for database operations**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: MEDIUM
+  - Current tests are unit tests only (models, schemas, database connection)
+  - Add integration tests that verify end-to-end workflows:
+    - Create amendment -> Add progress -> Update status -> Complete QA
+    - Test cascade deletes (amendment -> progress entries)
+    - Test foreign key constraints
+    - Test concurrent updates (optimistic locking)
+    - Test transaction rollback scenarios
+  - Create `tests/test_integration.py`
+  - **ESTIMATED EFFORT**: 3-4 hours
+  - File: `tests/test_integration.py` (to be created)
+
+- [ ] **MEDIUM: Add API performance tests and benchmarks**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: MEDIUM
+  - No performance testing exists
+  - As dataset grows, need to ensure queries remain fast
+  - Create `tests/test_performance.py`:
+    - Test list endpoint with 1000+ amendments
+    - Test filtering performance
+    - Test text search performance
+    - Benchmark response times (<200ms target)
+    - Test database query counts (N+1 query detection)
+  - Use pytest-benchmark for measurements
+  - **ESTIMATED EFFORT**: 2-3 hours
+  - File: `tests/test_performance.py` (to be created)
+
+- [ ] **LOW: Add frontend unit tests (Jest/React Testing Library)**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: LOW
+  - **DEPENDS ON**: Frontend implementation must exist first
+  - No frontend tests exist (frontend not implemented yet)
+  - Once frontend is built, add:
+    - Component unit tests
+    - Integration tests for forms
+    - API service mocking
+    - Router navigation tests
+  - Aim for 70%+ frontend coverage
+  - **ESTIMATED EFFORT**: 6-8 hours (after frontend exists)
+  - Directory: `frontend/src/__tests__/` (to be created)
+
+## Low Priority - Developer Experience (Added by PLANNER)
+
+- [ ] **MEDIUM: Add API response caching**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: LOW
+  - Improve performance for frequently accessed data
+  - Add Redis-based caching:
+    - Cache reference data (statuses, priorities, etc.) - rarely changes
+    - Cache amendment stats (5-minute TTL)
+    - Cache individual amendments (1-minute TTL)
+    - Cache-Control headers for frontend
+  - Add cache invalidation on updates
+  - Make Redis optional (fallback to in-memory cache)
+  - **ESTIMATED EFFORT**: 4-5 hours
+  - File: `backend/app/cache.py` (to be created)
+
+- [ ] **LOW: Add database query optimization and indexing strategy**
+  - Impact: LOW | Effort: LOW | Priority: LOW
+  - Current models have basic indexes, but could be optimized
+  - Add composite indexes for common queries:
+    - (amendment_status, priority) - status+priority filtering
+    - (assigned_to, amendment_status) - user's assignments
+    - (created_on DESC) - recent amendments
+    - (application, amendment_status) - app-specific queries
+  - Add SQL query profiling in development
+  - Document indexing strategy
+  - **ESTIMATED EFFORT**: 2-3 hours
+  - File: `backend/app/models.py` (index additions)
+
+- [ ] **LOW: Create API usage documentation with examples**
+  - Impact: LOW | Effort: MEDIUM | Priority: LOW
+  - FastAPI auto-docs exist but lack examples
+  - Create `docs/API_EXAMPLES.md`:
+    - Complete curl examples for each endpoint
+    - Example request/response payloads
+    - Common filtering patterns
+    - Error handling examples
+    - Pagination examples
+  - Add Postman collection export
+  - **ESTIMATED EFFORT**: 3-4 hours
+  - File: `docs/API_EXAMPLES.md` (to be created)
 
 ## Completed
 

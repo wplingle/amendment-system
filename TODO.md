@@ -54,7 +54,7 @@ Based on existing fis-amendments .NET application structure.
     - linked_amendment_id (integer)
     - link_type (string: 'Related', 'Duplicate', 'Blocks', 'Blocked By')
 
-- [ ] Set up SQLAlchemy database configuration and connection
+- [x] Set up SQLAlchemy database configuration and connection
   - Create database.py with SQLite connection
   - Create Base model class with common audit fields
   - Add database session management and dependencies
@@ -257,6 +257,111 @@ Based on existing fis-amendments .NET application structure.
   - Role-based permissions (Developer, QA, Manager, Admin)
   - Assignment to users rather than strings
 
+## High Priority - Code Quality & Technical Debt
+
+- [ ] **CRITICAL: Fix SQLAlchemy deprecation warning**
+  - Impact: HIGH | Effort: LOW | Priority: CRITICAL
+  - Replace deprecated `declarative_base()` with SQLAlchemy 2.0 pattern
+  - File: `backend/app/database.py:2,16`
+  - Change from `sqlalchemy.ext.declarative.declarative_base()` to `sqlalchemy.orm.DeclarativeBase`
+  - Prevents breaking changes in future SQLAlchemy versions
+  - Quick win: ~5 minute fix, eliminates deprecation warnings
+
+- [ ] **CRITICAL: Add database connection error handling**
+  - Impact: HIGH | Effort: MEDIUM | Priority: CRITICAL
+  - Add try-catch for database connection failures in `database.py`
+  - Validate DATABASE_URL format before connecting
+  - Make `check_same_thread` SQLite-specific (breaks PostgreSQL/MySQL)
+  - Add connection retry logic and meaningful error messages
+  - Prevents silent failures and improves reliability
+
+- [ ] **HIGH: Fix missing foreign key constraint on AmendmentLink**
+  - Impact: HIGH | Effort: LOW | Priority: HIGH
+  - File: `backend/app/models.py:178`
+  - Add `ForeignKey("amendments.amendment_id")` to `linked_amendment_id`
+  - Add `ondelete="CASCADE"` for proper cleanup
+  - Prevents orphaned amendment links and data integrity issues
+  - Write test to verify constraint works
+
+- [ ] **HIGH: Move CORS configuration to environment variables**
+  - Impact: MEDIUM | Effort: LOW | Priority: HIGH
+  - File: `backend/app/main.py:21`
+  - Replace hardcoded `["http://localhost:3000"]` with env var `CORS_ORIGINS`
+  - Add security headers (X-Content-Type-Options, X-Frame-Options, X-XSS-Protection)
+  - Add TrustedHostMiddleware
+  - Restrict allow_methods and allow_headers to specific values
+  - Update `.env.example` with CORS_ORIGINS and ALLOWED_HOSTS
+
+- [ ] **HIGH: Add type hints throughout codebase**
+  - Impact: MEDIUM | Effort: MEDIUM | Priority: HIGH
+  - Add return type hint to `get_db()` function: `Generator[Session, None, None]`
+  - Add type hints to all CRUD functions (when created)
+  - Add `__repr__` methods to all models for better debugging
+  - Run mypy for type checking (add to requirements.txt)
+  - Improves IDE support and catches type-related bugs early
+
+## High Priority - Developer Experience & Tooling
+
+- [ ] **Setup pre-commit hooks for code quality**
+  - Impact: VERY HIGH | Effort: MEDIUM | Priority: CRITICAL
+  - Create `.pre-commit-config.yaml` with hooks for:
+    - black (Python formatting)
+    - flake8 (Python linting)
+    - isort (import sorting)
+    - prettier (JS/React formatting)
+    - eslint (JS/React linting)
+    - trailing whitespace removal
+  - Add `isort` and `pre-commit` to requirements.txt
+  - Add `prettier` and `eslint` to frontend package.json
+  - Create `pyproject.toml` for black/isort configuration
+  - Prevents bad code from being committed, enforces consistency
+
+- [ ] **Create Makefile for development workflow**
+  - Impact: VERY HIGH | Effort: MEDIUM | Priority: HIGH
+  - Create comprehensive Makefile with targets:
+    - `make setup` - Initial project setup (venv, npm install, db init)
+    - `make dev` - Run backend + frontend concurrently
+    - `make test` - Run all tests (pytest + jest)
+    - `make lint` - Run all linters
+    - `make format` - Auto-format all code
+    - `make clean` - Clean build artifacts and databases
+    - `make db-reset` - Reset and seed database
+    - `make help` - Show all available commands
+  - Reduces onboarding time from hours to minutes
+
+- [ ] **Add Docker Compose for local development**
+  - Impact: VERY HIGH | Effort: MEDIUM | Priority: HIGH
+  - Create `docker-compose.yml` with services:
+    - Backend (Python 3.9 + FastAPI with hot reload)
+    - Frontend (Node.js + React with hot reload)
+    - Volume for SQLite database persistence
+  - Create `backend/Dockerfile` and `frontend/Dockerfile`
+  - Create `.dockerignore` files
+  - Update `.gitignore` to exclude `*.db` files
+  - Eliminates "works on my machine" problems
+
+- [ ] **Setup CI/CD pipeline with GitHub Actions**
+  - Impact: HIGH | Effort: MEDIUM | Priority: HIGH
+  - Create `.github/workflows/ci.yml` for automated testing:
+    - Run pytest with coverage reporting
+    - Run linters (black, flake8, isort)
+    - Run frontend tests (when implemented)
+    - Validate frontend builds successfully
+  - Create `.github/workflows/pr-validation.yml` for PR checks
+  - Add `pytest-cov` to requirements.txt for coverage reports
+  - Enforce minimum 80% test coverage
+  - Catches bugs before they reach main branch
+
+- [ ] **Add database seeding script**
+  - Impact: HIGH | Effort: LOW | Priority: HIGH
+  - Create `scripts/seed_db.py` to populate reference data:
+    - Sample amendments with various statuses
+    - Sample progress updates
+    - Sample linked amendments
+    - All enum values (statuses, priorities, forces, types)
+  - Add CLI argument for number of sample records
+  - Makes local development and testing much easier
+
 ## Medium Priority - Testing & Quality
 
 - [ ] Write comprehensive backend API tests (pytest)
@@ -333,11 +438,56 @@ Based on existing fis-amendments .NET application structure.
   - Show when other users are viewing/editing
   - Auto-refresh when changes occur
 
+## Medium Priority - Documentation
+
+- [ ] **Create comprehensive developer documentation**
+  - Impact: HIGH | Effort: MEDIUM | Priority: MEDIUM
+  - Create `CONTRIBUTING.md` with:
+    - Code style guidelines
+    - PR submission process
+    - Commit message conventions
+    - How to add new features
+  - Create `docs/DEVELOPMENT.md` with:
+    - Project architecture overview
+    - Local development workflow
+    - How to run tests
+    - Debugging tips
+  - Create `docs/API.md` with endpoint usage examples
+  - Create `docs/DATABASE.md` with schema documentation
+  - Reduces onboarding friction for new developers
+
+- [ ] **Add pytest coverage reporting and enforcement**
+  - Impact: MEDIUM | Effort: LOW | Priority: MEDIUM
+  - Update `pytest.ini` with coverage configuration:
+    - `--cov=backend/app` for coverage tracking
+    - `--cov-report=html` for detailed HTML reports
+    - `--cov-report=term-missing` for terminal output
+    - `--cov-fail-under=80` to enforce minimum coverage
+  - Add `pytest-cov` to requirements.txt
+  - Add coverage reports to `.gitignore`
+  - Ensures test quality and catches untested code
+
+- [ ] **Add database indexing for performance**
+  - Impact: MEDIUM | Effort: LOW | Priority: MEDIUM
+  - Add indexes to frequently queried fields in models.py:
+    - `amendment_status` (for status filtering)
+    - `development_status` (for development filtering)
+    - `assigned_to` (for user assignment queries)
+    - `priority` (for priority filtering)
+    - `created_on` and `modified_on` (for date range queries)
+    - `application` (for application filtering)
+  - Improves query performance as dataset grows
+
 ## DevOps & Deployment
 
-- [ ] Create docker-compose.yml for easy local development
-  - Backend container
-  - Frontend container
+- [ ] **Add database migration support (Alembic)**
+  - Impact: CRITICAL | Effort: MEDIUM | Priority: HIGH
+  - Install Alembic and create initial migration
+  - Create `alembic.ini` configuration
+  - Create migration scripts in `backend/alembic/versions/`
+  - Document migration workflow in `docs/DATABASE.md`
+  - Critical for production deployments and schema changes
+  - Prevents data loss during schema updates
 
 - [ ] Add environment configuration (.env file handling)
   - Database URL
@@ -347,10 +497,7 @@ Based on existing fis-amendments .NET application structure.
 - [ ] Write deployment documentation
   - How to deploy to production
   - Environment setup instructions
-
-- [ ] Add database migration support (Alembic)
-  - Initial migration
-  - Migration documentation
+  - Security hardening checklist
 
 ## Completed
 

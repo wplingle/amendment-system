@@ -59,7 +59,7 @@ Based on existing fis-amendments .NET application structure.
   - Create Base model class with common audit fields
   - Add database session management and dependencies
 
-- [ ] Create Pydantic schemas for request/response validation
+- [x] Create Pydantic schemas for request/response validation
   - AmendmentCreate schema (all required fields)
   - AmendmentUpdate schema (partial updates)
   - AmendmentResponse schema (full model with relationships)

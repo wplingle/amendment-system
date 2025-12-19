@@ -67,7 +67,7 @@ Based on existing fis-amendments .NET application structure.
   - AmendmentProgressCreate/Response schemas
   - AmendmentFilter schema (for search criteria)
 
-- [x] Implement CRUD operations in crud.py (IN PROGRESS)
+- [x] Implement CRUD operations in crud.py
   - Create amendment with auto-generated reference number
   - Read amendment by ID or reference
   - List all amendments with filtering:
@@ -501,25 +501,25 @@ Based on existing fis-amendments .NET application structure.
 
 ## High Priority - New Strategic Improvements (Added by PLANNER)
 
-- [x] **CRITICAL: Implement CRUD operations module (backend/app/crud.py)** (IN PROGRESS)
+- [x] **CRITICAL: Implement CRUD operations module (backend/app/crud.py)** ✅ COMPLETED
   - Impact: CRITICAL | Effort: HIGH | Priority: CRITICAL
   - **BLOCKER**: No CRUD module exists - API endpoints cannot function without it
   - The backend currently has models, schemas, and main.py but NO crud.py
   - API endpoints in TODO depend on CRUD functions that don't exist yet
   - Create comprehensive CRUD operations:
-    - `create_amendment()` - with auto-generated reference number
-    - `get_amendment()`, `get_amendment_by_reference()`
-    - `get_amendments()` - with advanced filtering (status, priority, dates, text search)
-    - `update_amendment()` - with audit field tracking
-    - `delete_amendment()`
-    - `add_amendment_progress()`, `get_amendment_progress()`
-    - `link_amendments()`, `get_linked_amendments()`
-    - `get_amendment_stats()` - for dashboard statistics
-  - Add proper error handling for not found, duplicate references
-  - Add transaction management and rollback on errors
+    - `create_amendment()` - with auto-generated reference number ✅
+    - `get_amendment()`, `get_amendment_by_reference()` ✅
+    - `get_amendments()` - with advanced filtering (status, priority, dates, text search) ✅
+    - `update_amendment()` - with audit field tracking ✅
+    - `delete_amendment()` ✅
+    - `add_amendment_progress()`, `get_amendment_progress()` ✅
+    - `link_amendments()`, `get_linked_amendments()` ✅
+    - `get_amendment_stats()` - for dashboard statistics ✅
+  - Add proper error handling for not found, duplicate references ✅
+  - Add transaction management and rollback on errors ✅
   - **BLOCKS**: All API endpoint implementation work
   - **ESTIMATED EFFORT**: 4-6 hours of focused development
-  - File: `backend/app/crud.py` (to be created)
+  - File: `backend/app/crud.py` ✅ CREATED
 
 - [ ] **HIGH: Implement core API endpoints (backend/app/main.py)**
   - Impact: CRITICAL | Effort: HIGH | Priority: HIGH

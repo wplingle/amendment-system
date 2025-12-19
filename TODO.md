@@ -4,7 +4,7 @@ Based on existing fis-amendments .NET application structure.
 
 ## High Priority - Backend Core
 
-- [ ] Create database models matching fis-amendments structure:
+- [x] Create database models matching fis-amendments structure:
   - Amendment model with fields:
     - amendment_id (Primary Key, auto-increment)
     - amendment_reference (string, unique reference number)

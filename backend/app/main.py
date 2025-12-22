@@ -77,3 +77,345 @@ def health_check():
         "status": "healthy" if db_status else "unhealthy",
         "database": "connected" if db_status else "disconnected",
     }
+
+
+# ============================================================================
+# Amendment Endpoints
+# ============================================================================
+
+from fastapi import Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+
+from .database import get_db
+from . import crud, schemas
+
+
+@app.post("/api/amendments", response_model=schemas.AmendmentResponse, status_code=201)
+def create_amendment(
+    amendment: schemas.AmendmentCreate,
+    created_by: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Create a new amendment.
+
+    Auto-generates a unique reference number in the format AMD-YYYYMMDD-NNN.
+    """
+    try:
+        db_amendment = crud.create_amendment(db, amendment, created_by)
+        return db_amendment
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/amendments", response_model=schemas.AmendmentListResponse)
+def list_amendments(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),
+    amendment_reference: Optional[str] = None,
+    amendment_ids: Optional[str] = None,
+    amendment_status: Optional[str] = None,
+    development_status: Optional[str] = None,
+    priority: Optional[str] = None,
+    amendment_type: Optional[str] = None,
+    force: Optional[str] = None,
+    application: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    reported_by: Optional[str] = None,
+    date_reported_from: Optional[str] = None,
+    date_reported_to: Optional[str] = None,
+    created_on_from: Optional[str] = None,
+    created_on_to: Optional[str] = None,
+    search_text: Optional[str] = None,
+    qa_completed: Optional[bool] = None,
+    qa_assigned: Optional[bool] = None,
+    database_changes: Optional[bool] = None,
+    db_upgrade_changes: Optional[bool] = None,
+    sort_by: str = "created_on",
+    sort_order: str = "desc",
+    db: Session = Depends(get_db),
+):
+    """
+    List amendments with advanced filtering and pagination.
+
+    Supports filtering by status, priority, dates, assigned users, and text search.
+    """
+    # Build filter object
+    filters = schemas.AmendmentFilter(
+        amendment_reference=amendment_reference,
+        amendment_ids=[int(x) for x in amendment_ids.split(",")] if amendment_ids else None,
+        amendment_status=amendment_status.split(",") if amendment_status else None,
+        development_status=development_status.split(",") if development_status else None,
+        priority=priority.split(",") if priority else None,
+        amendment_type=amendment_type.split(",") if amendment_type else None,
+        force=force.split(",") if force else None,
+        application=application,
+        assigned_to=assigned_to,
+        reported_by=reported_by,
+        date_reported_from=date_reported_from,
+        date_reported_to=date_reported_to,
+        created_on_from=created_on_from,
+        created_on_to=created_on_to,
+        search_text=search_text,
+        qa_completed=qa_completed,
+        qa_assigned=qa_assigned,
+        database_changes=database_changes,
+        db_upgrade_changes=db_upgrade_changes,
+        skip=skip,
+        limit=limit,
+        sort_by=sort_by,
+        sort_order=sort_order,
+    )
+
+    amendments, total = crud.get_amendments(db, filters=filters)
+
+    return schemas.AmendmentListResponse(
+        items=amendments,
+        total=total,
+        skip=skip,
+        limit=limit,
+    )
+
+
+@app.get("/api/amendments/stats", response_model=schemas.AmendmentStatsResponse)
+def get_amendment_stats_endpoint(db: Session = Depends(get_db)):
+    """
+    Get amendment statistics for dashboard.
+
+    Returns counts by status, priority, type, and development status.
+    """
+    stats = crud.get_amendment_stats(db)
+    return stats
+
+
+@app.get("/api/amendments/reference/{reference}", response_model=schemas.AmendmentResponse)
+def get_amendment_by_reference(reference: str, db: Session = Depends(get_db)):
+    """
+    Get a specific amendment by reference number.
+
+    Example: GET /api/amendments/reference/AMD-20231215-001
+    """
+    amendment = crud.get_amendment_by_reference(db, reference)
+    if not amendment:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return amendment
+
+
+@app.get("/api/amendments/{amendment_id}", response_model=schemas.AmendmentResponse)
+def get_amendment(amendment_id: int, db: Session = Depends(get_db)):
+    """
+    Get a specific amendment by ID.
+
+    Includes all relationships (progress history, applications, links).
+    """
+    amendment = crud.get_amendment(db, amendment_id)
+    if not amendment:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return amendment
+
+
+@app.put("/api/amendments/{amendment_id}", response_model=schemas.AmendmentResponse)
+def update_amendment(
+    amendment_id: int,
+    amendment: schemas.AmendmentUpdate,
+    modified_by: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Update an amendment.
+
+    Allows partial updates. Only provided fields will be updated.
+    """
+    updated_amendment = crud.update_amendment(db, amendment_id, amendment, modified_by)
+    if not updated_amendment:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return updated_amendment
+
+
+@app.patch("/api/amendments/{amendment_id}/qa", response_model=schemas.AmendmentResponse)
+def update_amendment_qa(
+    amendment_id: int,
+    qa_update: schemas.AmendmentQAUpdate,
+    modified_by: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Update QA-specific fields for an amendment.
+
+    Dedicated endpoint for QA team to update testing-related fields.
+    """
+    updated_amendment = crud.update_amendment_qa(db, amendment_id, qa_update, modified_by)
+    if not updated_amendment:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return updated_amendment
+
+
+@app.delete("/api/amendments/{amendment_id}", status_code=204)
+def delete_amendment(amendment_id: int, db: Session = Depends(get_db)):
+    """
+    Delete an amendment.
+
+    Cascades to all related progress entries, applications, and links.
+    """
+    success = crud.delete_amendment(db, amendment_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Amendment not found")
+    return None
+
+
+# ============================================================================
+# Amendment Progress Endpoints
+# ============================================================================
+
+
+@app.post(
+    "/api/amendments/{amendment_id}/progress",
+    response_model=schemas.AmendmentProgressResponse,
+    status_code=201,
+)
+def add_amendment_progress(
+    amendment_id: int,
+    progress: schemas.AmendmentProgressCreate,
+    created_by: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Add a progress update to an amendment.
+
+    Tracks development progress with timestamp and notes.
+    """
+    try:
+        db_progress = crud.add_amendment_progress(db, amendment_id, progress, created_by)
+        return db_progress
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get(
+    "/api/amendments/{amendment_id}/progress",
+    response_model=List[schemas.AmendmentProgressResponse],
+)
+def get_amendment_progress(amendment_id: int, db: Session = Depends(get_db)):
+    """
+    Get all progress updates for an amendment.
+
+    Returns progress entries ordered by date (newest first).
+    """
+    progress_list = crud.get_amendment_progress(db, amendment_id)
+    return progress_list
+
+
+# ============================================================================
+# Amendment Link Endpoints
+# ============================================================================
+
+
+@app.post(
+    "/api/amendments/{amendment_id}/links",
+    response_model=schemas.AmendmentLinkResponse,
+    status_code=201,
+)
+def link_amendments(
+    amendment_id: int,
+    link: schemas.AmendmentLinkCreate,
+    created_by: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    Link two amendments together.
+
+    Link types: Related, Duplicate, Blocks, Blocked By
+    """
+    try:
+        db_link = crud.link_amendments(db, amendment_id, link, created_by)
+        return db_link
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get(
+    "/api/amendments/{amendment_id}/links",
+    response_model=List[schemas.AmendmentLinkResponse],
+)
+def get_linked_amendments(amendment_id: int, db: Session = Depends(get_db)):
+    """
+    Get all amendments linked to this amendment.
+
+    Returns all links where this amendment is either the source or target.
+    """
+    links = crud.get_linked_amendments(db, amendment_id)
+    return links
+
+
+@app.delete("/api/amendments/links/{link_id}", status_code=204)
+def remove_amendment_link(link_id: int, db: Session = Depends(get_db)):
+    """
+    Remove a link between two amendments.
+    """
+    success = crud.remove_amendment_link(db, link_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return None
+
+
+# ============================================================================
+# Statistics and Reference Data Endpoints
+# ============================================================================
+
+
+@app.get("/api/reference/next", response_model=schemas.NextReferenceResponse)
+def get_next_reference(db: Session = Depends(get_db)):
+    """
+    Get the next available amendment reference number.
+
+    Useful for pre-filling forms before creating an amendment.
+    """
+    next_ref = crud.get_next_reference(db)
+    return schemas.NextReferenceResponse(reference=next_ref)
+
+
+@app.get("/api/reference/statuses", response_model=List[str])
+def get_statuses():
+    """Get all available amendment statuses."""
+    from .models import AmendmentStatus
+    return [status.value for status in AmendmentStatus]
+
+
+@app.get("/api/reference/dev-statuses", response_model=List[str])
+def get_dev_statuses():
+    """Get all available development statuses."""
+    from .models import DevelopmentStatus
+    return [status.value for status in DevelopmentStatus]
+
+
+@app.get("/api/reference/priorities", response_model=List[str])
+def get_priorities():
+    """Get all available priority levels."""
+    from .models import Priority
+    return [priority.value for priority in Priority]
+
+
+@app.get("/api/reference/types", response_model=List[str])
+def get_types():
+    """Get all available amendment types."""
+    from .models import AmendmentType
+    return [type_.value for type_ in AmendmentType]
+
+
+@app.get("/api/reference/forces", response_model=List[str])
+def get_forces():
+    """Get all available military forces."""
+    from .models import Force
+    return [force.value for force in Force]
+
+
+@app.get("/api/reference/link-types", response_model=List[str])
+def get_link_types():
+    """Get all available amendment link types."""
+    from .models import LinkType
+    return [link_type.value for link_type in LinkType]

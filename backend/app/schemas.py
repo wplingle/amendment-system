@@ -350,10 +350,19 @@ class ReferenceData(BaseModel):
 class NextReferenceResponse(BaseModel):
     """Response schema for next available reference number."""
 
-    next_reference: str
-    pattern: str = Field(
-        default="AMD-YYYYMMDD-NNN", description="Reference number pattern"
-    )
+    reference: str = Field(..., description="Next available reference number")
+
+
+class AmendmentStatsResponse(BaseModel):
+    """Response schema for amendment statistics."""
+
+    total_amendments: int
+    by_status: dict
+    by_priority: dict
+    by_type: dict
+    by_development_status: dict
+    qa_pending: int
+    database_changes_count: int
 
 
 # ============================================================================

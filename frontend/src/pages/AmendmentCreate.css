@@ -164,6 +164,86 @@
   color: #c00;
 }
 
+.section-hint {
+  color: #666;
+  font-size: 0.9rem;
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.documents-preview {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f9f9f9;
+  border-radius: 4px;
+}
+
+.documents-preview h3 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.document-preview-item {
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.doc-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.doc-preview-header strong {
+  flex: 1;
+  color: #333;
+}
+
+.doc-size {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.btn-remove {
+  background: #dc3545;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove:hover {
+  background: #c82333;
+}
+
+.doc-preview-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr;
+  gap: 0.5rem;
+}
+
+.doc-preview-fields input,
+.doc-preview-fields select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
@@ -175,5 +255,9 @@
 
   .btn {
     width: 100%;
+  }
+
+  .doc-preview-fields {
+    grid-template-columns: 1fr;
   }
 }

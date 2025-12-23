@@ -154,4 +154,28 @@ export const versionAPI = {
   },
 };
 
+export const documentAPI = {
+  upload: (amendmentId, formData) => {
+    return apiClient.post(`/amendments/${amendmentId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  getAll: (amendmentId) => {
+    return apiClient.get(`/amendments/${amendmentId}/documents`);
+  },
+
+  download: (documentId) => {
+    return apiClient.get(`/documents/${documentId}/download`, {
+      responseType: 'blob',
+    });
+  },
+
+  delete: (documentId) => {
+    return apiClient.delete(`/documents/${documentId}`);
+  },
+};
+
 export default apiClient;

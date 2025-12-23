@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { amendmentAPI, referenceAPI, employeeAPI } from '../services/api';
+import { amendmentAPI, referenceAPI, employeeAPI, documentAPI } from '../services/api';
 import './AmendmentDetail.css';
 
 function AmendmentDetail() {
@@ -29,6 +29,16 @@ function AmendmentDetail() {
     notes: '',
     start_date: new Date().toISOString().slice(0, 16)
   });
+
+  // Document upload
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [documentData, setDocumentData] = useState({
+    document_name: '',
+    document_type: 'Other',
+    description: ''
+  });
+  const [uploading, setUploading] = useState(false);
 
   const loadAmendment = useCallback(async () => {
     try {
@@ -128,6 +138,83 @@ function AmendmentDetail() {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setUploadFile(file);
+      if (!documentData.document_name) {
+        setDocumentData(prev => ({
+          ...prev,
+          document_name: file.name
+        }));
+      }
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!uploadFile) {
+      setError('Please select a file to upload');
+      return;
+    }
+
+    if (!documentData.document_name) {
+      setError('Please enter a document name');
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', uploadFile);
+      formData.append('document_name', documentData.document_name);
+      formData.append('document_type', documentData.document_type);
+      if (documentData.description) {
+        formData.append('description', documentData.description);
+      }
+
+      await documentAPI.upload(id, formData);
+      setShowDocumentModal(false);
+      setUploadFile(null);
+      setDocumentData({
+        document_name: '',
+        document_type: 'Other',
+        description: ''
+      });
+      await loadAmendment();
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to upload document');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadDocument = async (documentId, filename) => {
+    try {
+      const response = await documentAPI.download(documentId);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to download document');
+    }
+  };
+
+  const handleDeleteDocument = async (documentId) => {
+    if (window.confirm('Are you sure you want to delete this document?')) {
+      try {
+        await documentAPI.delete(documentId);
+        await loadAmendment();
+      } catch (err) {
+        setError(err.response?.data?.detail || 'Failed to delete document');
+      }
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleString();
@@ -169,6 +256,7 @@ function AmendmentDetail() {
             <>
               <button className="btn btn-primary" onClick={handleEdit}>Edit</button>
               <button className="btn btn-success" onClick={() => setShowProgressModal(true)}>Add Progress</button>
+              <button className="btn btn-info" onClick={() => setShowDocumentModal(true)}>Upload Document</button>
               <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
             </>
           ) : (
@@ -539,6 +627,57 @@ function AmendmentDetail() {
         </div>
 
         <div className="detail-section">
+          <h2>Documents</h2>
+          {amendment.documents && amendment.documents.length > 0 ? (
+            <div className="documents-list">
+              <table className="documents-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Uploaded</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {amendment.documents.map(doc => (
+                    <tr key={doc.document_id}>
+                      <td>
+                        <strong>{doc.document_name}</strong>
+                        {doc.description && <div className="doc-description">{doc.description}</div>}
+                      </td>
+                      <td>{doc.document_type}</td>
+                      <td>{doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'N/A'}</td>
+                      <td>
+                        {formatDate(doc.uploaded_on)}
+                        {doc.uploaded_by && <div className="doc-meta">By: {doc.uploaded_by}</div>}
+                      </td>
+                      <td>
+                        <button
+                          className="btn-small btn-download"
+                          onClick={() => handleDownloadDocument(doc.document_id, doc.original_filename)}
+                        >
+                          Download
+                        </button>
+                        <button
+                          className="btn-small btn-delete"
+                          onClick={() => handleDeleteDocument(doc.document_id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p>No documents attached yet.</p>
+          )}
+        </div>
+
+        <div className="detail-section">
           <h2>Metadata</h2>
           <div className="detail-grid">
             <div className="detail-field">
@@ -596,6 +735,65 @@ function AmendmentDetail() {
             <div className="modal-footer">
               <button className="btn btn-primary" onClick={handleAddProgress}>Add Progress</button>
               <button className="btn btn-secondary" onClick={() => setShowProgressModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDocumentModal && (
+        <div className="modal-overlay" onClick={() => setShowDocumentModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Upload Document</h2>
+            <div className="modal-body">
+              <div className="form-field">
+                <label>Select File *</label>
+                <input
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept="*/*"
+                />
+                {uploadFile && <div className="file-info">Selected: {uploadFile.name}</div>}
+              </div>
+              <div className="form-field">
+                <label>Document Name *</label>
+                <input
+                  type="text"
+                  value={documentData.document_name}
+                  onChange={(e) => setDocumentData({...documentData, document_name: e.target.value})}
+                  placeholder="Enter a display name for this document"
+                />
+              </div>
+              <div className="form-field">
+                <label>Document Type</label>
+                <select
+                  value={documentData.document_type}
+                  onChange={(e) => setDocumentData({...documentData, document_type: e.target.value})}
+                >
+                  <option value="Test Plan">Test Plan</option>
+                  <option value="Screenshot">Screenshot</option>
+                  <option value="Specification">Specification</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-field">
+                <label>Description</label>
+                <textarea
+                  value={documentData.description}
+                  onChange={(e) => setDocumentData({...documentData, description: e.target.value})}
+                  placeholder="Optional description"
+                  rows="3"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn btn-primary"
+                onClick={handleUploadDocument}
+                disabled={uploading || !uploadFile}
+              >
+                {uploading ? 'Uploading...' : 'Upload'}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setShowDocumentModal(false)}>Cancel</button>
             </div>
           </div>
         </div>

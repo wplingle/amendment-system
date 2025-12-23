@@ -15,6 +15,7 @@ from .models import (
     AmendmentProgress,
     AmendmentLink,
     AmendmentDocument,
+    AmendmentApplication,
     AmendmentStatus,
     DevelopmentStatus,
     Priority,
@@ -30,6 +31,7 @@ from .schemas import (
     AmendmentProgressCreate,
     AmendmentLinkCreate,
     AmendmentDocumentCreate,
+    AmendmentApplicationCreate,
     AmendmentFilter,
     EmployeeCreate,
     EmployeeUpdate,
@@ -1320,3 +1322,144 @@ def delete_amendment_document(db: Session, document_id: int) -> bool:
     except Exception as e:
         db.rollback()
         raise ValueError(f"Failed to delete document: {str(e)}") from e
+
+
+# ============================================================================
+# Amendment Application CRUD Operations
+# ============================================================================
+
+
+def add_amendment_application(
+    db: Session, amendment_id: int, app_data: AmendmentApplicationCreate
+) -> Optional[AmendmentApplication]:
+    """
+    Add an application to an amendment.
+
+    Args:
+        db: Database session
+        amendment_id: Amendment ID
+        app_data: Application data
+
+    Returns:
+        AmendmentApplication: Created application link or None if amendment not found
+
+    Raises:
+        ValueError: If creation fails
+    """
+    try:
+        # Verify amendment exists
+        amendment = get_amendment(db, amendment_id)
+        if not amendment:
+            return None
+
+        db_app = AmendmentApplication(
+            amendment_id=amendment_id,
+            application_id=app_data.application_id,
+            application_name=app_data.application_name,
+            reported_version=app_data.reported_version,
+            applied_version=app_data.applied_version,
+            development_status=app_data.development_status,
+        )
+
+        db.add(db_app)
+        db.commit()
+        db.refresh(db_app)
+
+        return db_app
+
+    except Exception as e:
+        db.rollback()
+        raise ValueError(f"Failed to add application to amendment: {str(e)}") from e
+
+
+def get_amendment_applications(
+    db: Session, amendment_id: int
+) -> List[AmendmentApplication]:
+    """
+    Get all applications for a specific amendment.
+
+    Args:
+        db: Database session
+        amendment_id: Amendment ID
+
+    Returns:
+        List[AmendmentApplication]: List of application links
+    """
+    return (
+        db.query(AmendmentApplication)
+        .filter(AmendmentApplication.amendment_id == amendment_id)
+        .all()
+    )
+
+
+def update_amendment_application(
+    db: Session, app_link_id: int, app_data: AmendmentApplicationCreate
+) -> Optional[AmendmentApplication]:
+    """
+    Update an amendment application link.
+
+    Args:
+        db: Database session
+        app_link_id: AmendmentApplication ID
+        app_data: Updated application data
+
+    Returns:
+        AmendmentApplication: Updated application link or None if not found
+
+    Raises:
+        ValueError: If update fails
+    """
+    try:
+        db_app = db.query(AmendmentApplication).filter(
+            AmendmentApplication.id == app_link_id
+        ).first()
+
+        if not db_app:
+            return None
+
+        # Update fields
+        db_app.application_id = app_data.application_id
+        db_app.application_name = app_data.application_name
+        db_app.reported_version = app_data.reported_version
+        db_app.applied_version = app_data.applied_version
+        db_app.development_status = app_data.development_status
+
+        db.commit()
+        db.refresh(db_app)
+
+        return db_app
+
+    except Exception as e:
+        db.rollback()
+        raise ValueError(f"Failed to update amendment application: {str(e)}") from e
+
+
+def delete_amendment_application(db: Session, app_link_id: int) -> bool:
+    """
+    Remove an application from an amendment.
+
+    Args:
+        db: Database session
+        app_link_id: AmendmentApplication ID
+
+    Returns:
+        bool: True if deleted, False if not found
+
+    Raises:
+        ValueError: If deletion fails
+    """
+    try:
+        db_app = db.query(AmendmentApplication).filter(
+            AmendmentApplication.id == app_link_id
+        ).first()
+
+        if not db_app:
+            return False
+
+        db.delete(db_app)
+        db.commit()
+        return True
+
+    except Exception as e:
+        db.rollback()
+        raise ValueError(f"Failed to delete amendment application: {str(e)}") from e

@@ -60,6 +60,22 @@ export const amendmentAPI = {
   unlinkAmendments: (id, linkedId) => {
     return apiClient.delete(`/amendments/${id}/links/${linkedId}`);
   },
+
+  addApplication: (id, appData) => {
+    return apiClient.post(`/amendments/${id}/applications`, appData);
+  },
+
+  getApplications: (id) => {
+    return apiClient.get(`/amendments/${id}/applications`);
+  },
+
+  updateApplication: (appLinkId, appData) => {
+    return apiClient.put(`/amendment-applications/${appLinkId}`, appData);
+  },
+
+  deleteApplication: (appLinkId) => {
+    return apiClient.delete(`/amendment-applications/${appLinkId}`);
+  },
 };
 
 export const referenceAPI = {

@@ -814,3 +814,72 @@ def delete_amendment_document_endpoint(
         return None
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================================
+# Amendment Application Endpoints
+# ============================================================================
+
+
+@app.post("/api/amendments/{amendment_id}/applications", response_model=schemas.AmendmentApplicationResponse, status_code=201)
+def add_amendment_application(
+    amendment_id: int,
+    app_data: schemas.AmendmentApplicationCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Add an application to an amendment.
+    """
+    try:
+        result = crud.add_amendment_application(db, amendment_id, app_data)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Amendment not found")
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/amendments/{amendment_id}/applications", response_model=List[schemas.AmendmentApplicationResponse])
+def get_amendment_applications(
+    amendment_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Get all applications for an amendment.
+    """
+    return crud.get_amendment_applications(db, amendment_id)
+
+
+@app.put("/api/amendment-applications/{app_link_id}", response_model=schemas.AmendmentApplicationResponse)
+def update_amendment_application(
+    app_link_id: int,
+    app_data: schemas.AmendmentApplicationCreate,
+    db: Session = Depends(get_db),
+):
+    """
+    Update an amendment application link.
+    """
+    try:
+        result = crud.update_amendment_application(db, app_link_id, app_data)
+        if result is None:
+            raise HTTPException(status_code=404, detail="Amendment application not found")
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/amendment-applications/{app_link_id}", status_code=204)
+def delete_amendment_application(
+    app_link_id: int,
+    db: Session = Depends(get_db),
+):
+    """
+    Remove an application from an amendment.
+    """
+    try:
+        success = crud.delete_amendment_application(db, app_link_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Amendment application not found")
+        return None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

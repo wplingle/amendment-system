@@ -265,6 +265,8 @@ function AmendmentDetail() {
                 {saving ? 'Saving...' : 'Save'}
               </button>
               <button className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
+              <button className="btn btn-success" onClick={() => setShowProgressModal(true)}>Add Progress</button>
+              <button className="btn btn-info" onClick={() => setShowDocumentModal(true)}>Upload Document</button>
             </>
           )}
         </div>

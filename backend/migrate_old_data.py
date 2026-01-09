@@ -81,8 +81,8 @@ TYPE_MAPPING = {
     "Enhancement": "Enhancement",
     "Fault": "Fault",
     "Suggestion": "Suggestion",
-    "Bug": "Bug",
-    "Feature": "Feature",
+    "Bug": "Fault",  # Map Bug to Fault
+    "Feature": "Enhancement",  # Map Feature to Enhancement
 }
 
 def parse_sql_insert(line):
@@ -262,13 +262,9 @@ def main():
 
     # Track reference counters
     ref_counters = {
-        'Bug': 0,
         'Fault': 0,
         'Enhancement': 0,
-        'Feature': 0,
         'Suggestion': 0,
-        'Maintenance': 0,
-        'Documentation': 0,
     }
 
     # Process each INSERT statement
@@ -316,6 +312,20 @@ def main():
         # Set application to NULL (will use AmendmentApplication table later)
         new_data['application'] = None
 
+        # Parse application and version from old "Application" field
+        app_version_info = None
+        old_app_field = old_data.get('Application')
+        if old_app_field:
+            # Match pattern: "Application Name (version)"
+            match = re.match(r'^(.+?)\s*\(([^)]+)\)$', old_app_field.strip())
+            if match:
+                app_name = match.group(1).strip()
+                version = match.group(2).strip()
+                # Clean up typos
+                if app_name == "Centurion ENglish":
+                    app_name = "Centurion English"
+                app_version_info = (app_name, version)
+
         # Fix modified_on - if NULL, use created_on
         if not new_data.get('modified_on') and new_data.get('created_on'):
             new_data['modified_on'] = new_data['created_on']
@@ -354,7 +364,27 @@ def main():
             sql = f"INSERT INTO amendments ({columns}) VALUES ({placeholders})"
 
             cursor.execute(sql, list(new_data.values()))
+            amendment_id = cursor.lastrowid
             migrated_count += 1
+
+            # Create AmendmentApplication record if we have app/version info
+            if app_version_info:
+                app_name, reported_version = app_version_info
+                applied_version = old_data.get('Applied Version')
+
+                # Look up application_id
+                cursor.execute("SELECT application_id FROM applications WHERE application_name = ?", (app_name,))
+                app_result = cursor.fetchone()
+
+                if app_result:
+                    app_id = app_result[0]
+
+                    # Insert into amendment_applications
+                    cursor.execute("""
+                        INSERT INTO amendment_applications
+                        (amendment_id, application_id, application_name, reported_version, applied_version, development_status)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (amendment_id, app_id, app_name, reported_version, applied_version, new_data.get('development_status')))
 
             if idx % 100 == 0:
                 print(f"Processed {idx}/{len(insert_statements)} records...")
@@ -375,7 +405,7 @@ def main():
     # Check if reference record exists
     cursor.execute("SELECT COUNT(*) FROM amendment_references")
     if cursor.fetchone()[0] == 0:
-        # Insert initial counters
+        # Insert initial counters (set unused types to 0)
         cursor.execute("""
             INSERT INTO amendment_references (
                 bug_reference,
@@ -387,13 +417,13 @@ def main():
                 documentation_reference
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
-            ref_counters.get('Bug', 0),
+            0,  # bug_reference (unused)
             ref_counters.get('Fault', 0),
             ref_counters.get('Enhancement', 0),
-            ref_counters.get('Feature', 0),
+            0,  # feature_reference (unused)
             ref_counters.get('Suggestion', 0),
-            ref_counters.get('Maintenance', 0),
-            ref_counters.get('Documentation', 0),
+            0,  # maintenance_reference (unused)
+            0,  # documentation_reference (unused)
         ))
         conn.commit()
         print("Reference counters initialized:")
